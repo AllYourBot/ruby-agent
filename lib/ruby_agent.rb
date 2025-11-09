@@ -46,15 +46,15 @@ class RubyAgent
     @pending_interrupt_request_id = nil
     @deferred_exit = false
 
-    unless @session_key
-      inject_streaming_response({
-        type: "system",
-        subtype: "prompt",
-        system_prompt: @system_prompt,
-        timestamp: Time.now.utc.iso8601(6),
-        received_at: Time.now.utc.iso8601(6)
-      })
-    end
+    return if @session_key
+
+    inject_streaming_response({
+                                type: "system",
+                                subtype: "prompt",
+                                system_prompt: @system_prompt,
+                                timestamp: Time.now.utc.iso8601(6),
+                                received_at: Time.now.utc.iso8601(6)
+                              })
   end
 
   def create_message_callback(name, &processor)
@@ -68,7 +68,7 @@ class RubyAgent
     @on_message_callback = block
   end
 
-  alias_method :on_event, :on_message
+  alias on_event on_message
 
   def on_error(&block)
     @on_error_callback = block
@@ -111,37 +111,37 @@ class RubyAgent
         @wait_thr = nil
       end
     end
-  rescue => e
+  rescue StandardError => e
     trigger_error(e)
     raise
   end
 
   def ask(text, sender_name: "User", additional: [])
     formatted_text = if sender_name.downcase == "system"
-      <<~TEXT.strip
-        <system>
-          #{text}
-        </system>
-      TEXT
-    else
-      "#{sender_name}: #{text}"
-    end
+                       <<~TEXT.strip
+                         <system>
+                           #{text}
+                         </system>
+                       TEXT
+                     else
+                       "#{sender_name}: #{text}"
+                     end
     formatted_text += extra_context(additional, sender_name:)
 
     inject_streaming_response({
-      type: "user",
-      subtype: "new_message",
-      sender_name:,
-      text:,
-      formatted_text:,
-      timestamp: Time.now.utc.iso8601(6)
-    })
+                                type: "user",
+                                subtype: "new_message",
+                                sender_name:,
+                                text:,
+                                formatted_text:,
+                                timestamp: Time.now.utc.iso8601(6)
+                              })
 
     send_message(formatted_text)
   end
 
   def ask_after_interrupt(text, sender_name: "User", additional: [])
-    @pending_ask_after_interrupt = {text:, sender_name:, additional:}
+    @pending_ask_after_interrupt = { text:, sender_name:, additional: }
   end
 
   def send_system_message(text)
@@ -171,7 +171,7 @@ class RubyAgent
 
     puts "→ stdout closed, waiting for process to exit..." if DEBUG
     exit_status = @wait_thr.value
-    puts "→ Process exited with status: #{exit_status.success? ? "success" : "failure"}" if DEBUG
+    puts "→ Process exited with status: #{exit_status.success? ? 'success' : 'failure'}" if DEBUG
     unless exit_status.success?
       stderr_output = @stderr.read
       raise ConnectionError, "Claude command failed: #{stderr_output}"
@@ -202,7 +202,9 @@ class RubyAgent
     request_id = "req_#{@request_counter}_#{SecureRandom.hex(4)}"
 
     @pending_interrupt_request_id = request_id if @pending_ask_after_interrupt
-    puts "→ Sending interrupt with request_id: #{request_id}, pending_ask: #{@pending_ask_after_interrupt ? true : false}" if DEBUG
+    if DEBUG
+      puts "→ Sending interrupt with request_id: #{request_id}, pending_ask: #{@pending_ask_after_interrupt ? true : false}"
+    end
 
     control_request = {
       type: "control_request",
@@ -213,14 +215,14 @@ class RubyAgent
     }
 
     inject_streaming_response({
-      type: "control",
-      subtype: "interrupt",
-      timestamp: Time.now.utc.iso8601(6)
-    })
+                                type: "control",
+                                subtype: "interrupt",
+                                timestamp: Time.now.utc.iso8601(6)
+                              })
 
     @stdin.puts JSON.generate(control_request)
     @stdin.flush
-  rescue => e
+  rescue StandardError => e
     warn "Failed to send interrupt signal: #{e.message}"
     raise
   end
@@ -239,7 +241,7 @@ class RubyAgent
     begin
       @stdin.close unless @stdin.closed?
       puts "→ stdin closed" if DEBUG
-    rescue => e
+    rescue StandardError => e
       warn "Error closing stdin during exit: #{e.message}"
     end
   end
@@ -267,7 +269,7 @@ class RubyAgent
 
   def build_mcp_config(mcp_servers)
     servers = mcp_servers.transform_keys { |k| k.to_s.gsub("_", "-") }
-    {mcpServers: servers}
+    { mcpServers: servers }
   end
 
   def parse_system_prompt(template_content, context_vars)
@@ -285,9 +287,7 @@ class RubyAgent
     binding_context = create_binding_context(**context_vars)
     result = erb.result(binding_context)
 
-    if result.include?("<%=") || result.include?("%>")
-      raise ParseError, "There was an error parsing the system prompt."
-    end
+    raise ParseError, "There was an error parsing the system prompt." if result.include?("<%=") || result.include?("%>")
 
     result
   end
@@ -319,13 +319,13 @@ class RubyAgent
 
     message_json = {
       type: "user",
-      message: {role: "user", content: content},
+      message: { role: "user", content: content },
       session_id: session_id
     }.compact
 
     @stdin.puts JSON.generate(message_json)
     @stdin.flush
-  rescue => e
+  rescue StandardError => e
     trigger_error(e)
     raise
   end
@@ -388,6 +388,7 @@ class RubyAgent
 
   def check_nested_content_types(message, all_messages)
     return unless message["message"].is_a?(Hash)
+
     content = message.dig("message", "content")
     return unless content.is_a?(Array)
 
@@ -406,7 +407,7 @@ class RubyAgent
   end
 
   def trigger_custom_message_callbacks(message, all_messages)
-    @custom_message_callbacks.each do |name, config|
+    @custom_message_callbacks.each_value do |config|
       processor = config[:processor]
       callback = config[:callback]
 

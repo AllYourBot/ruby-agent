@@ -205,6 +205,64 @@ rescue RubyAgent::AgentError => e
 end
 ```
 
+## Development
+
+### Contributing
+
+1. Fork the repository: https://github.com/AllYourBot/ruby-agent
+2. Create a feature branch: `git checkout -b my-new-feature`
+3. Make your changes
+4. Run the CI suite locally to ensure everything passes:
+
+```bash
+# Run all CI tasks (linting + tests)
+rake ci
+
+# Or run tasks individually:
+rake ci:test   # Run test suite
+rake ci:lint   # Run RuboCop linter
+rake ci:scan   # Run security audit
+```
+
+5. Commit your changes: `git commit -am 'Add some feature'`
+6. Push to your fork: `git push origin my-new-feature`
+7. Create a Pull Request against the `main` branch
+
+### Running Tests Locally
+
+The test suite includes an integration test that runs Claude Code CLI locally:
+
+```bash
+# Run all tests
+rake test
+
+# Run a specific test
+ruby test/ruby_agent_test.rb --name test_simple_agent_query
+```
+
+**Note**: Tests require Claude Code CLI to be installed on your machine (see Prerequisites section).
+
+### Linting
+
+We use RuboCop for code linting:
+
+```bash
+# Check for linting issues
+rake ci:lint
+
+# Auto-fix linting issues
+bundle exec rubocop -a
+```
+
+### Publishing
+
+Publishing to RubyGems happens automatically via GitHub Actions when code is merged to `main`. The version number is read from `lib/ruby_agent/version.rb`.
+
+**Before merging a PR**, make sure to bump the version number appropriately:
+- Patch version (0.2.1 → 0.2.2) for bug fixes
+- Minor version (0.2.1 → 0.3.0) for new features
+- Major version (0.2.1 → 1.0.0) for breaking changes
+
 ## License
 
 MIT

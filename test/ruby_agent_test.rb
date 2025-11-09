@@ -1,4 +1,4 @@
-require_relative 'test_helper'
+require_relative "test_helper"
 
 class RubyAgentTest < Minitest::Test
   def test_simple_agent_query
@@ -100,7 +100,7 @@ class RubyAgentTest < Minitest::Test
   def test_create_message_callback
     agent = RubyAgent.new
 
-    agent.create_message_callback :test_callback do |message, all_messages|
+    agent.create_message_callback :test_callback do |_message, _all_messages|
       "processed"
     end
 
