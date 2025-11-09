@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local/bin/claude
-          key: claude-cli-${{ runner.os }}-${{ hashFiles('**/lockfile') || 'weekly' }}-${{ github.run_number % 100 }}
+          key: claude-cli-${{ runner.os }}-${{ github.run_number }}
           restore-keys: |
             claude-cli-${{ runner.os }}-
 
