@@ -1,7 +1,7 @@
-require_relative "lib/ruby-agent/version"
+require_relative "lib/ruby_agent/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = "ruby-agent"
+  spec.name          = "ruby_agent"
   spec.version       = RubyAgent::VERSION
   spec.authors       = ["Keith Schacht"]
   spec.email         = ["keith@keithschacht.com"]
