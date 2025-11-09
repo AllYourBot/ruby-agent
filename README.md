@@ -37,27 +37,12 @@ gem 'ruby_agent'
 ```ruby
 require 'ruby_agent'
 
-agent = RubyAgent.new(
-  system_prompt: "You are a helpful assistant",
-  model: "claude-sonnet-4-5-20250929"
-)
-
-agent.on_assistant do |event, all_events|
-  if event.dig("message", "content", 0, "type") == "text"
-    text = event.dig("message", "content", 0, "text")
-    puts "Assistant: #{text}"
-  end
-end
-
-agent.on_result do |event, all_events|
-  puts "Result: #{event['subtype']}"
-  agent.exit if event["subtype"] == "success"
-end
-
-agent.connect do
-  agent.ask("What is 1+1?", sender_name: "User")
-end
+agent = RubyAgent.new
+agent.on_result { |e, _| agent.exit if e["subtype"] == "success" }
+agent.connect { agent.ask("What is 2+2?") }
 ```
+
+That's it! Three lines to create an agent, ask Claude a question, and exit when done.
 
 ### Advanced Example with Callbacks
 
@@ -219,9 +204,10 @@ end
 rake ci
 
 # Or run tasks individually:
-rake ci:test   # Run test suite
-rake ci:lint   # Run RuboCop linter
-rake ci:scan   # Run security audit
+rake ci:test      # Run test suite
+rake ci:lint      # Run RuboCop linter
+rake ci:lint:fix  # Auto-fix linting issues
+rake ci:scan      # Run security audit
 ```
 
 5. Commit your changes: `git commit -am 'Add some feature'`
@@ -251,7 +237,7 @@ We use RuboCop for code linting:
 rake ci:lint
 
 # Auto-fix linting issues
-bundle exec rubocop -a
+rake ci:lint:fix
 ```
 
 ### Publishing

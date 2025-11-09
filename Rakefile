@@ -15,19 +15,25 @@ namespace :ci do
     sh "bundle exec rake test"
   end
 
-  desc "Run linter"
-  task :lint do
-    sh "bundle exec rubocop"
-  rescue StandardError
-    puts "Rubocop not configured yet, skipping..."
+  namespace :lint do
+    desc "Run linter"
+    task :default do
+      sh "bundle exec rubocop"
+    end
+
+    desc "Auto-fix linting issues"
+    task :fix do
+      sh "bundle exec rubocop -a"
+    end
   end
 
   desc "Run security scan"
   task :scan do
     sh "bundle exec bundler-audit check --update"
-  rescue StandardError
-    puts "Bundler-audit not installed, skipping..."
   end
+
+  # alias ci:lint to ci:lint:default
+  task lint: "lint:default"
 end
 
 desc "Run all CI tasks"

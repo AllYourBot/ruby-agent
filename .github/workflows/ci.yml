@@ -37,7 +37,17 @@ jobs:
           ruby-version: '3.4'
           bundler-cache: true
 
+      - name: Cache Claude CLI
+        id: cache-claude
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/claude
+          key: claude-cli-${{ runner.os }}-${{ hashFiles('**/lockfile') || 'weekly' }}-${{ github.run_number % 100 }}
+          restore-keys: |
+            claude-cli-${{ runner.os }}-
+
       - name: Install Claude Code CLI
+        if: steps.cache-claude.outputs.cache-hit != 'true'
         run: curl -fsSL https://claude.ai/install.sh | bash
 
       - name: Add Claude to PATH
