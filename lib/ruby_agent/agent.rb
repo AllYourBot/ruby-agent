@@ -70,7 +70,7 @@ module RubyAgent
       timezone: "Eastern Time (US & Canada)",
       skip_permissions: true,
       verbose: true,
-      mcp_servers: { headless_browser: { type: :http, url: "http://0.0.0.0:4567/mcp" } },
+      mcp_servers: nil,
       session_key: nil,
       resume_session: false,
       **additional_context

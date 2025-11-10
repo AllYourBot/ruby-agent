@@ -60,8 +60,8 @@ begin
     config.sandbox_dir = "./news_sandbox"
   end
 
-  agent = MyAgent.new(name: "News-Agent").connect(mpc_servers: { headless_browser: { type: :http,
-                                                                                     url: "http://localhost:0.0.0.0/mcp" } })
+  agent = MyAgent.new(name: "News-Agent").connect(mcp_servers: { headless_browser: { type: :http,
+                                                                                     url: "http://0.0.0.0:4567/mcp" } })
 
   puts "Welcome to your Claude assistant!"
 
