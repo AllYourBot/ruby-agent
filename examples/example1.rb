@@ -1,3 +1,6 @@
+require "dotenv/load"
+require "reline"
+
 # Before running:
 # start the hbt server:
 #   bundle exec hbt start --no-headless --be-human --single-session --session-id=amazon
@@ -14,6 +17,7 @@ class MyAgent < RubyAgent::Agent
   def my_handler(event)
     puts "Event triggered"
     puts "Received event: #{event.dig('message', 'id')}"
+    puts "Received event type: #{event['type']}"
   end
 
   # Or using a block:
@@ -24,15 +28,58 @@ class MyAgent < RubyAgent::Agent
   # end
 end
 
-RubyAgent.configure do |config|
-  config.anthropic_api_key = ENV.fetch("ANTHROPIC_API_KEY", nil) # Not strictly necessary with claude installed
-  config.system_prompt = "You are a helpful AI news  assistant."
-  config.model = "claude-sonnet-4-5-20250929"
-  config.sandbox_dir = "./news_sandbox"
+DONE = %w[done end eof exit].freeze
+
+def prompt_for_message
+  puts "\n(multiline input; type 'end' on its own line when done. or 'exit' to exit)\n\n"
+
+  user_message = Reline.readmultiline("User message: ", true) do |multiline_input|
+    last = multiline_input.split.last
+    DONE.include?(last)
+  end
+
+  return :noop unless user_message
+
+  lines = user_message.split("\n")
+
+  if lines.size > 1 && DONE.include?(lines.last)
+    # remove the "done" from the message
+    user_message = lines[0..-2].join("\n")
+  end
+
+  return :exit if DONE.include?(user_message.downcase)
+
+  user_message
 end
 
-agent = MyAgent.new(name: "News-Agent").connect
+begin
+  RubyAgent.configure do |config|
+    config.anthropic_api_key = ENV.fetch("ANTHROPIC_API_KEY", nil) # Not strictly necessary with claude installed
+    config.system_prompt = "You are a helpful AI news  assistant."
+    config.model = "claude-sonnet-4-5-20250929"
+    config.sandbox_dir = "./news_sandbox"
+  end
 
-puts agent.ask("Go to google.com and search for Boston")
+  agent = MyAgent.new(name: "News-Agent").connect(mpc_servers: { headless_browser: { type: :http,
+                                                                                     url: "http://localhost:0.0.0.0/mcp" } })
 
-agent.close
+  puts "Welcome to your Claude assistant!"
+
+  loop do
+    user_message = prompt_for_message
+
+    case user_message
+    when :noop
+      next
+    when :exit
+      break
+    end
+
+    puts "Asking Claude..."
+    puts agent.ask(user_message)
+  end
+rescue Interrupt
+  puts "\nExiting..."
+ensure
+  agent&.close
+end
