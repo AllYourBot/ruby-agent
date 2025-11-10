@@ -37,110 +37,184 @@ gem 'ruby_agent'
 ```ruby
 require 'ruby_agent'
 
-agent = RubyAgent.new
-agent.on_result { |e, _| agent.exit if e["subtype"] == "success" }
-agent.connect { agent.ask("What is 2+2?") }
+# Option 1: Use global configuration
+RubyAgent.configure do |config|
+  config.system_prompt = "You are a helpful assistant."
+  config.model = "claude-sonnet-4-5-20250929"
+  config.sandbox_dir = "./sandbox"
+end
+
+agent = RubyAgent::Agent.new(name: "MyAgent")
+agent.connect(verbose: false)
+
+response = agent.ask("What is 1+1?")
+puts response
+
+agent.close
 ```
 
-That's it! Three lines to create an agent, ask Claude a question, and exit when done.
-
-### Advanced Example with Callbacks
+### Custom Agent with Callbacks
 
 ```ruby
 require 'ruby_agent'
 
-agent = RubyAgent.new(
-  sandbox_dir: Dir.pwd,
+# Create custom agent class with event callbacks
+class MyAgent < RubyAgent::Agent
+  # Register callback using method name
+  on_event :handle_event
+
+  def handle_event(event)
+    case event['type']
+    when 'content_block_delta'
+      # Handle streaming text
+      text = event.dig('delta', 'text')
+      print text if text
+    when 'assistant'
+      # Handle complete assistant message
+      content = event.dig('message', 'content')
+      puts "\nAssistant: #{content}"
+    when 'result'
+      puts "\n[Conversation complete]"
+    end
+  end
+end
+
+# Initialize and connect
+agent = MyAgent.new(
+  name: "CustomAgent",
   system_prompt: "You are a helpful coding assistant",
   model: "claude-sonnet-4-5-20250929",
+  sandbox_dir: "./my_sandbox"
+)
+
+agent.connect(
+  timezone: "Eastern Time (US & Canada)",
+  skip_permissions: true,
   verbose: true
 )
 
-agent.create_message_callback :assistant_text do |event, all_events|
-  if event["type"] == "assistant" && event.dig("message", "content", 0, "type") == "text"
-    event.dig("message", "content", 0, "text")
+# Send messages
+agent.ask("Help me write a Ruby function")
+agent.close
+```
+
+### Using Block Callbacks
+
+```ruby
+require 'ruby_agent'
+
+class MyAgent < RubyAgent::Agent
+  # Register callback using block
+  on_event do |event|
+    if event['type'] == 'content_block_delta'
+      text = event.dig('delta', 'text')
+      print text if text
+    end
   end
 end
 
-agent.on_system_init do |event, _|
-  puts "Session started: #{event['session_id']}"
-end
-
-agent.on_assistant_text do |text|
-  puts "Claude says: #{text}"
-end
-
-agent.on_result do |event, all_events|
-  if event["subtype"] == "success"
-    puts "Task completed successfully!"
-    agent.exit
-  elsif event["subtype"] == "error_occurred"
-    puts "Error: #{event['result']}"
-    agent.exit
-  end
-end
-
-agent.on_error do |error|
-  puts "Error occurred: #{error.message}"
-end
-
-agent.connect do
-  agent.ask("Write a simple Hello World function in Ruby", sender_name: "User")
-end
+agent = MyAgent.new(name: "BlockAgent")
+agent.connect
+agent.ask("Tell me a joke")
+agent.close
 ```
 
 ### Resuming Sessions
 
 ```ruby
-agent = RubyAgent.new(
-  session_key: "existing_session_123",
+require 'ruby_agent'
+
+# First session
+agent = RubyAgent::Agent.new(
+  name: "MyAgent",
   system_prompt: "You are a helpful assistant"
 )
 
-agent.connect do
-  agent.ask("Continue from where we left off", sender_name: "User")
-end
+agent.connect(session_key: "my_session_123")
+agent.ask("Remember that my name is Alice")
+agent.close
+
+# Resume later
+agent = RubyAgent::Agent.new(
+  name: "MyAgent",
+  system_prompt: "You are a helpful assistant"
+)
+
+agent.connect(
+  session_key: "my_session_123",
+  resume_session: true
+)
+agent.ask("What is my name?")
+agent.close
 ```
 
-### Using ERB in System Prompts
+### Using MCP Servers
 
 ```ruby
-agent = RubyAgent.new(
-  system_prompt: "You are <%= role %> working on <%= project_name %>",
-  role: "a senior developer",
-  project_name: "RubyAgent"
+require 'ruby_agent'
+
+agent = RubyAgent::Agent.new(
+  name: "MCPAgent",
+  system_prompt: "You are a helpful assistant with web browsing capabilities"
 )
+
+# Connect with MCP server configuration
+agent.connect(
+  mcp_servers: {
+    headless_browser: {
+      type: :http,
+      url: "http://localhost:4567/mcp"
+    }
+  }
+)
+
+agent.ask("Browse to example.com and summarize the page")
+agent.close
+```
+
+### Interactive Example
+
+See `examples/example1.rb` for a complete interactive example with multiline input:
+
+```bash
+# Start MCP server (if using browser tool)
+bundle exec hbt start --no-headless --be-human --single-session
+
+# Run example
+ruby examples/example1.rb
 ```
 
 ## Event Callbacks
 
-RubyAgent supports dynamic event callbacks using `method_missing`. You can create callbacks for any event type:
+The callback system allows you to react to events during Claude's response streaming:
 
-- `on_message` (alias: `on_event`) - Triggered for every message
-- `on_assistant` - Triggered when Claude responds
-- `on_system_init` - Triggered when a session starts
-- `on_result` - Triggered when a task completes
-- `on_error` - Triggered when an error occurs
-- `on_tool_use` - Triggered when Claude uses a tool
-- `on_tool_result` - Triggered when a tool returns results
+### Event Types
 
-You can also create custom callbacks with specific subtypes like `on_system_init`, `on_error_timeout`, etc.
+- `type: "system"` - System messages
+- `type: "assistant"` - Complete assistant messages
+- `type: "content_block_delta"` - Streaming text chunks (contains `delta.text`)
+- `type: "result"` - Conversation completion
+- `type: "error"` - Error messages
 
-## Custom Message Callbacks
-
-Create custom message processors that filter and transform events:
+### Callback Registration
 
 ```ruby
-agent.create_message_callback :important_messages do |message, all_messages|
-  if message["type"] == "assistant"
-    message.dig("message", "content", 0, "text")
+class MyAgent < RubyAgent::Agent
+  # Method 1: Using method name
+  on_event :my_handler
+
+  def my_handler(event)
+    # Process event
+  end
+
+  # Method 2: Using block
+  on_event do |event|
+    # Process event
   end
 end
-
-agent.on_important_messages do |text|
-  puts "Important: #{text}"
-end
 ```
+
+Callbacks are executed in registration order and inherited through subclasses
 
 ## API
 
@@ -149,26 +223,14 @@ end
 Creates a new RubyAgent instance.
 
 **Options:**
-- `sandbox_dir` (String) - Working directory for the agent (default: `Dir.pwd`)
-- `timezone` (String) - Timezone for the agent (default: `"UTC"`)
-- `skip_permissions` (Boolean) - Skip permission prompts (default: `true`)
-- `verbose` (Boolean) - Enable verbose output (default: `false`)
-- `system_prompt` (String) - System prompt for Claude (default: `"You are a helpful assistant"`)
-- `model` (String) - Claude model to use (default: `"claude-sonnet-4-5-20250929"`)
-- `mcp_servers` (Hash) - MCP server configuration (default: `nil`)
-- `session_key` (String) - Resume an existing session (default: `nil`)
-- Additional keyword arguments are passed to the ERB template in `system_prompt`
+
 
 ### Instance Methods
 
-- `connect(&block)` - Connect to Claude and execute the block
+- `connect()` - Connect to Claude
 - `ask(text, sender_name: "User", additional: [])` - Send a message to Claude
-- `send_system_message(text)` - Send a system message
-- `interrupt` - Interrupt Claude's current operation
-- `exit` - Close the connection to Claude
-- `on_message(&block)` - Register a callback for all messages
+- `on_event(&block)` - Register a callback for all messages
 - `on_error(&block)` - Register a callback for errors
-- Dynamic `on_*` methods for specific event types
 
 ## Error Handling
 
@@ -180,9 +242,8 @@ RubyAgent defines three error types:
 
 ```ruby
 begin
-  agent.connect do
-    agent.ask("Hello", sender_name: "User")
-  end
+  agent.connect
+  agent.ask("Hello", sender_name: "User")
 rescue RubyAgent::ConnectionError => e
   puts "Connection failed: #{e.message}"
 rescue RubyAgent::AgentError => e
@@ -208,8 +269,9 @@ rake ci:test      # Run test suite
 rake ci:lint      # Run RuboCop linter
 rake ci:lint:fix  # Auto-fix linting issues
 rake ci:scan      # Run security audit
+rake build        # Add locally to run examples
+rake install
 ```
-
 5. Commit your changes: `git commit -am 'Add some feature'`
 6. Push to your fork: `git push origin my-new-feature`
 7. Create a Pull Request against the `main` branch
