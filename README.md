@@ -64,17 +64,8 @@ class MyAgent < RubyAgent::Agent
   on_event :handle_event
 
   def handle_event(event)
-    case event['type']
-    when 'content_block_delta'
-      # Handle streaming text
-      text = event.dig('delta', 'text')
-      print text if text
-    when 'assistant'
-      # Handle complete assistant message
-      content = event.dig('message', 'content')
-      puts "\nAssistant: #{content}"
-    when 'result'
-      puts "\n[Conversation complete]"
+    case event['type'] 
+    # TBD
     end
   end
 end
@@ -106,10 +97,7 @@ require 'ruby_agent'
 class MyAgent < RubyAgent::Agent
   # Register callback using block
   on_event do |event|
-    if event['type'] == 'content_block_delta'
-      text = event.dig('delta', 'text')
-      print text if text
-    end
+    # TBD
   end
 end
 
