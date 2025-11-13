@@ -1,11 +1,12 @@
 require "dotenv/load"
 require "reline"
 
-# Before running:
-# start the hbt server:
-#   bundle exec hbt start --no-headless --be-human --single-session --session-id=amazon
+# Register the mcp server
 # claude mcp add --transport http headless-browser http://localhost:4567/mcp
 # claude --dangerously-skip-permissions
+
+# Before running start the hbt server in a separate terminal:
+#   bundle exec hbt start --no-headless --be-human --single-session --session-id=amazon
 
 # Load local development version instead of installed gem
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
@@ -16,8 +17,8 @@ class MyAgent < RubyAgent::Agent
 
   def my_handler(event)
     puts "Event triggered"
-    puts "Received event: #{event.dig('message', 'id')}"
     puts "Received event type: #{event['type']}"
+    puts "Received event: #{event.dig('message', 'id')}"
   end
 
   # Or using a block:
