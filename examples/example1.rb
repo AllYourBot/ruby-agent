@@ -13,6 +13,7 @@ $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "ruby_agent"
 
 class MyAgent < RubyAgent::Agent
+  # 1. General event handler - fires for ALL events
   on_event :my_handler
 
   def my_handler(event)
@@ -21,11 +22,24 @@ class MyAgent < RubyAgent::Agent
     puts "Received event: #{event.dig('message', 'id')}"
   end
 
-  # Or using a block:
-  #
-  # on_event do |event|
-  #  puts "Block event triggered"
-  #  puts "Received event in block: #{event.dig("message", "id")}"
+  # 2. Event-specific handler - fires only for content_block_delta events
+  on_event_content_block_delta :streaming_handler
+
+  def streaming_handler(event)
+    # Handle streaming text output for content_block_delta events only
+    if event.dig("delta", "text")
+      print event["delta"]["text"]
+    end
+  end
+
+  # 3. Another event-specific handler - fires only for assistant messages
+  on_event_assistant do |event|
+    puts "Assistant message received"
+  end
+
+  # TODO:
+  # def on_event_result(event)
+  #  puts "\nConversation complete!"
   # end
 end
 
@@ -77,7 +91,9 @@ begin
     end
 
     puts "Asking Claude..."
-    puts agent.ask(user_message)
+    response = agent.ask(user_message)
+    puts # Newline after streaming output
+    puts response.final
   end
 rescue Interrupt
   puts "\nExiting..."

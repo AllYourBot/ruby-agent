@@ -24,21 +24,29 @@ module RubyAgent
     #
     # class MyAgent < RubyAgent::Agent
     #   # Using a method name
-    #   on_event :my_handler
+    #   on_event :my_handler  # Fires for all events
     #
     #   def my_handler(event)
-    #     text = event.dig("delta", "text")
-    #     # Process the streaming text
     #   end
     # end
     #
     # class MyAgent < RubyAgent::Agent
     #   # Using a block
-    #   on_event do |event|
-    #     text = event.dig("delta", "text")
-    #     # Process the streaming text
+    #   on_event do |event| # Fires for all events
+    #     puts "Event received: #{event['type']}"
     #   end
     # end
+
+    #  You can now register event-specific callbacks using the pattern
+    # on_event_<event_type>:
+    #
+    # on_event_content_block_delta :streaming_handler
+    # on_event_result :completion_handler
+    # on_event_assistant :assistant_handler
+
+    # Each callback fires only for its specific event type, while on_event
+    # callbacks continue to fire for all events. This follows the Single
+    # Responsibility Principle and makes the code more maintainable.
 
     def initialize(name: "MyName", system_prompt: nil, model: nil, sandbox_dir: nil)
       @name = name
@@ -254,7 +262,6 @@ module RubyAgent
             if message.dig("delta", "text")
               text = message["delta"]["text"]
               response.append_text(text)
-              print text
             end
           when "result"
             break
@@ -269,7 +276,6 @@ module RubyAgent
         end
       end
 
-      puts
       response
     end
   end

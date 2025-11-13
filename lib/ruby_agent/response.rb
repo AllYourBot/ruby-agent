@@ -11,10 +11,6 @@ module RubyAgent
       @text
     end
 
-    def to_s
-      @text
-    end
-
     def add_event(event)
       @events << event
       self
