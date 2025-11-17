@@ -22,19 +22,19 @@ class MyAgent < RubyAgent::Agent
     puts "Received event: #{event.dig('message', 'id')}"
   end
 
-  # 2. Another event-specific handler - fires only for assistant messages
+  # 2. Event-specific handler - fires only for assistant messages
   on_event_assistant do |event|
     puts "Assistant message received"
   end
 
-  # 3. Event-specific handler - fires only for content_block_delta events
+  # 3. Another event-specific handler - fires only for content_block_delta events
   on_event_content_block_delta :streaming_handler
 
   def streaming_handler(event)
     # Handle streaming text output for content_block_delta events only
-    if event.dig("delta", "text")
-      print event["delta"]["text"]
-    end
+    return unless event.dig("delta", "text")
+
+    print event["delta"]["text"]
   end
 
   # TODO:
@@ -92,8 +92,8 @@ begin
 
     puts "Asking Claude..."
     response = agent.ask(user_message)
-    puts # Newline after streaming output
-    response.final_text
+    puts "\n\nFinal response:\n\n"
+    puts response.final_text
   end
 rescue Interrupt
   puts "\nExiting..."
