@@ -7,7 +7,7 @@ module RubyAgent
       @events = events
     end
 
-    def final
+    def final_text
       @text
     end
 

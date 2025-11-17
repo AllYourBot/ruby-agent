@@ -37,7 +37,7 @@ module RubyAgent
     #   end
     # end
 
-    #  You can now register event-specific callbacks using the pattern
+    # You can register event-specific callbacks using the pattern
     # on_event_<event_type>:
     #
     # on_event_content_block_delta :streaming_handler
@@ -45,7 +45,7 @@ module RubyAgent
     # on_event_assistant :assistant_handler
 
     # Each callback fires only for its specific event type, while on_event
-    # callbacks continue to fire for all events. This follows the Single
+    # callbacks fires for all events. This follows the Single
     # Responsibility Principle and makes the code more maintainable.
 
     def initialize(name: "MyName", system_prompt: nil, model: nil, sandbox_dir: nil)
@@ -62,13 +62,7 @@ module RubyAgent
 
       return unless @session_key.nil?
 
-      inject_streaming_response({
-                                  type: "system",
-                                  subtype: "prompt",
-                                  system_prompt: @system_prompt,
-                                  timestamp: Time.now.iso8601(6),
-                                  received_at: Time.now.iso8601(6)
-                                })
+      timestamp = Time.now.utc.strftime("%Y%m%d%H%M%S")
     end
 
     def config
@@ -130,20 +124,6 @@ module RubyAgent
       @stdout = nil
       @stderr = nil
       @wait_thr = nil
-    end
-
-    def inject_streaming_response(event_hash)
-      stringified_event = event_hash.transform_keys(&:to_s)
-      all_lines = nil
-      @parsed_lines_mutex.synchronize do
-        @parsed_lines << stringified_event
-        all_lines = @parsed_lines.dup
-      end
-
-      # TODO: event handling(?)
-      # trigger_event(stringified_event, all_lines)
-      # trigger_dynamic_callbacks(stringified_event, all_lines)
-      # trigger_custom_event_callbacks(stringified_event, all_lines)
     end
 
     private
