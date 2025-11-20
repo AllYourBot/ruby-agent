@@ -208,6 +208,10 @@ rake ci:test      # Run test suite
 rake ci:lint      # Run RuboCop linter
 rake ci:lint:fix  # Auto-fix linting issues
 rake ci:scan      # Run security audit
+
+# To run manual examples build locally:
+rake build
+rake install
 ```
 
 5. Commit your changes: `git commit -am 'Add some feature'`

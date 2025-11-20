@@ -1,3 +1,3 @@
-class RubyAgent
-  VERSION = "0.2.2".freeze
+module RubyAgent
+  VERSION = "0.2.3".freeze
 end
