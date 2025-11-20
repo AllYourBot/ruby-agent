@@ -62,7 +62,7 @@ module RubyAgent
 
       return unless @session_key.nil?
 
-      timestamp = Time.now.utc.strftime("%Y%m%d%H%M%S")
+      Time.now.utc.strftime("%Y%m%d%H%M%S")
     end
 
     def config
@@ -108,8 +108,6 @@ module RubyAgent
 
       send_message(message)
       read_response
-    rescue StandardError
-      raise
     end
 
     def close
@@ -187,10 +185,9 @@ module RubyAgent
 
       @stdin.puts JSON.generate(message_json)
       @stdin.flush
-    rescue StandardError
-      raise
     end
 
+    # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/BlockLength
     def read_response
       response = RubyAgent::Response.new
 
@@ -258,5 +255,6 @@ module RubyAgent
 
       response
     end
+    # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/BlockLength
   end
 end

@@ -5,6 +5,9 @@ require "reline"
 # claude mcp add --transport http headless-browser http://localhost:4567/mcp
 # claude --dangerously-skip-permissions
 
+# Install the headless_browser_tool gem
+# gem install headless_browser_tool --source https://github.com/krschacht/headless-browser-tool.git
+
 # Before running start the hbt server in a separate terminal:
 #   bundle exec hbt start --no-headless --be-human --single-session --session-id=amazon
 
@@ -23,7 +26,7 @@ class MyAgent < RubyAgent::Agent
   end
 
   # 2. Event-specific handler - fires only for assistant messages
-  on_event_assistant do |event|
+  on_event_assistant do |_event|
     puts "Assistant message received"
   end
 
@@ -37,7 +40,7 @@ class MyAgent < RubyAgent::Agent
     print event["delta"]["text"]
   end
 
-  # TODO:
+  # TODO: Add this
   # def on_event_result(event)
   #  puts "\nConversation complete!"
   # end

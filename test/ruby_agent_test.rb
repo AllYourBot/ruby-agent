@@ -1,110 +1,87 @@
 require_relative "test_helper"
 
 class RubyAgentTest < Minitest::Test
-  def test_simple_agent_query
-    agent = RubyAgent.new(
-      system_prompt: "You are a helpful assistant. Be very concise.",
-      model: "claude-sonnet-4-5-20250929",
-      verbose: false
-    )
-
-    assistant_responses = []
-    result_received = false
-
-    agent.on_assistant do |event, _all_events|
-      if event.dig("message", "content", 0, "type") == "text"
-        text = event.dig("message", "content", 0, "text")
-        assistant_responses << text
-      end
-    end
-
-    agent.on_result do |event, _all_events|
-      result_received = true
-      agent.exit if event["subtype"] == "success"
-    end
-
-    agent.connect do
-      agent.ask("What is 1+1? Just give me the number.", sender_name: "User")
-    end
-
-    assert result_received, "Expected to receive a result event"
-    assert assistant_responses.any? { |r| r.include?("2") }, "Expected assistant to answer '2'"
-  end
-
   def test_initialization_with_defaults
-    agent = RubyAgent.new
+    agent = RubyAgent::Agent.new
 
-    assert_equal Dir.pwd, agent.sandbox_dir
-    assert_equal "UTC", agent.timezone
-    assert agent.skip_permissions
-    refute agent.verbose
-    assert_equal "You are a helpful assistant", agent.system_prompt
+    assert_equal "MyName", agent.name
+    assert_equal "You are a helpful AI assistant.", agent.system_prompt
     assert_equal "claude-sonnet-4-5-20250929", agent.model
+    assert_equal "./sandbox", agent.sandbox_dir
   end
 
   def test_initialization_with_custom_options
-    agent = RubyAgent.new(
+    agent = RubyAgent::Agent.new(
+      name: "TestAgent",
       sandbox_dir: "/tmp",
-      timezone: "America/New_York",
-      skip_permissions: false,
-      verbose: true,
       system_prompt: "Custom prompt",
       model: "claude-opus-4"
     )
 
+    assert_equal "TestAgent", agent.name
     assert_equal "/tmp", agent.sandbox_dir
-    assert_equal "America/New_York", agent.timezone
-    refute agent.skip_permissions
-    assert agent.verbose
     assert_equal "Custom prompt", agent.system_prompt
     assert_equal "claude-opus-4", agent.model
   end
 
-  def test_erb_system_prompt_parsing
-    agent = RubyAgent.new(
-      system_prompt: "Hello <%= name %>, you are <%= role %>.",
-      name: "Claude",
-      role: "assistant"
+  def test_configuration_integration
+    RubyAgent.configure do |config|
+      config.system_prompt = "Configured prompt"
+      config.model = "claude-opus-4"
+      config.sandbox_dir = "/tmp/test"
+    end
+
+    agent = RubyAgent::Agent.new
+
+    assert_equal "Configured prompt", agent.system_prompt
+    assert_equal "claude-opus-4", agent.model
+    assert_equal "/tmp/test", agent.sandbox_dir
+  ensure
+    # Reset configuration
+    RubyAgent.configuration = nil
+  end
+
+  def test_configuration_can_be_overridden_at_initialization
+    RubyAgent.configure do |config|
+      config.system_prompt = "Configured prompt"
+      config.model = "claude-opus-4"
+    end
+
+    agent = RubyAgent::Agent.new(
+      system_prompt: "Override prompt",
+      model: "claude-sonnet-4-5-20250929"
     )
 
-    assert_equal "Hello Claude, you are assistant.", agent.system_prompt
+    assert_equal "Override prompt", agent.system_prompt
+    assert_equal "claude-sonnet-4-5-20250929", agent.model
+  ensure
+    # Reset configuration
+    RubyAgent.configuration = nil
   end
 
-  def test_erb_system_prompt_raises_on_undefined_variable
-    assert_raises(NameError) do
-      RubyAgent.new(
-        system_prompt: "Hello <%= undefined_var %>"
-      )
+  def test_ask_raises_when_not_connected
+    agent = RubyAgent::Agent.new
+
+    error = assert_raises(RubyAgent::Agent::ConnectionError) do
+      agent.ask("Hello")
     end
+
+    assert_match(/Not connected/, error.message)
   end
 
-  def test_on_message_callback_registration
-    agent = RubyAgent.new
+  def test_ask_ignores_nil_or_empty_messages
+    agent = RubyAgent::Agent.new
 
-    agent.on_message do |message, all_messages|
-    end
-
-    assert agent.instance_variable_get(:@on_message_callback), "Expected on_message callback to be registered"
+    # These should return early without raising errors
+    assert_nil agent.ask(nil)
+    assert_nil agent.ask("")
+    assert_nil agent.ask("   ")
   end
 
-  def test_dynamic_callbacks_via_method_missing
-    agent = RubyAgent.new
+  def test_close_is_safe_when_not_connected
+    agent = RubyAgent::Agent.new
 
-    agent.on_custom_event do |message, all_messages|
-    end
-
-    dynamic_callbacks = agent.instance_variable_get(:@dynamic_callbacks)
-    assert dynamic_callbacks.key?("custom_event"), "Expected custom_event callback to be registered"
-  end
-
-  def test_create_message_callback
-    agent = RubyAgent.new
-
-    agent.create_message_callback :test_callback do |_message, _all_messages|
-      "processed"
-    end
-
-    custom_callbacks = agent.instance_variable_get(:@custom_message_callbacks)
-    assert custom_callbacks.key?("test_callback"), "Expected test_callback to be registered"
+    # Should not raise an error
+    assert_nil agent.close
   end
 end
